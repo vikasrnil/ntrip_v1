@@ -38,9 +38,12 @@ void *ntrip_thread(void *arg)
     {
         sockfd = NtripSocketInit((char *)host, (char *)request);
         if (sockfd < 0) {
+            perror("Socket init failed");
             sleep(2);
             continue;
         }
+        
+        printf("NTRIP connected\n");
 
         while (1)
         {
@@ -48,8 +51,10 @@ void *ntrip_thread(void *arg)
 
             if (n > 0)
             {
-                if (write_full(serial_fd, buffer, n) < 0)
+                if (write_full(serial_fd, buffer, n) < 0) {
+                    perror("Serial write failed");
                     break;
+                }
             }
             else
             {
@@ -79,7 +84,7 @@ void *serial_reader_thread(void *arg)
     float alti = 0, hdop = 0;
     char valid = 0, ltdir = 0, lngdir = 0, fixt = 0;
 
-    // 🔥 Sync flags
+    // Sync flags
     int rmc_updated = 0;
     int gga_updated = 0;
 
