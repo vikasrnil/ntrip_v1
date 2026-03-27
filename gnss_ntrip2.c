@@ -52,6 +52,7 @@ void *ntrip_dev(void *arg)
 
         if (n > 0)
         {
+            //printf("%s",buffer);
             // Handle partial writes
             ssize_t total = 0;
             while (total < n) {
@@ -104,10 +105,13 @@ void *serial_reader_thread(void *arg)
     static int idx = 0;
 
     // GNSS parsed fields
-    int tim = 0, dat = 0, qua, nsati, diff_age, diff_sat;
-    double lat, lng, spd, hd;
-    float alti, hdop;
-    char valid, ltdir, lngdir, fixt;
+    int tim = 0, dat = 0, qua = 0, nsati = 0, diff_age = 0, diff_sat = 0;
+    double lat = 0.0, lng = 0.0, spd = 0.0, hd = 0.0;
+    float alti = 0.0, hdop = 0.0;
+    char valid = 0, ltdir = 0, lngdir = 0, fixt = 0;
+
+    int got_rmc = 0;
+    int got_gga = 0;
 
     while (1)
     {
@@ -125,15 +129,31 @@ void *serial_reader_thread(void *arg)
 
                     if (verifyChecksum(line))
                     {
-                        rmc_nmeaparser(line, &tim, &valid, &lat, &ltdir,
-                                       &lng, &lngdir, &spd, &hd, &dat, &fixt);
+                        // Check sentence type
+                        if (strstr(line, "$GNRMC") || strstr(line, "$GPRMC"))
+                        {
+                            rmc_nmeaparser(line, &tim, &valid, &lat, &ltdir,
+                                           &lng, &lngdir, &spd, &hd, &dat, &fixt);
+                            got_rmc = 1;
+                        }
+                        else if (strstr(line, "$GNGGA") || strstr(line, "$GPGGA"))
+                        {
+                            gga_nmeaparser(line, &tim, &lat, &ltdir, &lng, &lngdir,
+                                           &qua, &nsati, &hdop, &alti, &diff_age, &diff_sat);
+                            got_gga = 1;
+                        }
 
-                        gga_nmeaparser(line, &tim, &lat, &ltdir, &lng, &lngdir,
-                                       &qua, &nsati, &hdop, &alti, &diff_age, &diff_sat);
+                        // Print only when both are received
+                        if (got_rmc && got_gga)
+                        {
+                            printf("%d %c %f %c %f %c %f %f %d %c %d %d\n",
+                                   tim, valid, lat, ltdir, lng, lngdir,
+                                   spd, hd, dat, fixt, qua,diff_age);
 
-                        printf("%d %c %f %c %f %c %f %f %d %c %d\n",
-                               tim, valid, lat, ltdir, lng, lngdir,
-                               spd, hd, dat, fixt, qua);
+                            // Reset flags for next cycle
+                            got_rmc = 0;
+                            got_gga = 0;
+                        }
                     }
 
                     idx = 0; // reset line buffer
@@ -151,7 +171,8 @@ void *serial_reader_thread(void *arg)
         }
         else
         {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
                 usleep(1000);
                 continue;
             }
@@ -170,7 +191,7 @@ int main()
 {
     pthread_t tid, wid;
 
-    // Open serial port ONCE
+    // Open serial port
     int serial_fd = init_read_port(DEVICE);
     if (serial_fd < 0) {
         perror("Failed to open serial port");
