@@ -93,36 +93,29 @@ void *ntrip_dev(void *arg)
 
     int reconnect_count = 1;
 
-    while (1)
+while (1)
+{
+    ntrip_gga(sckfd, "ntrip_gga.txt");
+
+    bzero(buffer, BUFFER_SIZE);
+
+    n = read(sckfd, buffer, BUFFER_SIZE);
+
+    if (n > 0)
     {
-        // Send latest GGA periodically
-        ntrip_gga(sckfd, "ntrip_gga.txt");
-
-        bzero(buffer, BUFFER_SIZE);
-
-        pthread_mutex_lock(&lock);
-
-        while ((n = read(sckfd, buffer, BUFFER_SIZE)) > 0 && server != NULL)
-        {
-            write(wprt, buffer, n);
-
-            printf("Wrote %d bytes\n", n);
-
-            usleep(2000);
-            bzero(buffer, BUFFER_SIZE);
-        }
-
-        pthread_mutex_unlock(&lock);
-
-        // Reconnect logic
-        if (n <= 0)
-        {
-            printf("Reconnecting... Attempt: %d\n", reconnect_count++);
-            close(sckfd);
-            sckfd = NtripSocketInit(hst, get_request);
-        }
+        write(wprt, buffer, n);
+        printf("Wrote %d bytes\n", n);
     }
 
+    if (n <= 0)
+    {
+        printf("Reconnecting... Attempt: %d\n", reconnect_count++);
+        close(sckfd);
+        sckfd = NtripSocketInit(hst, get_request);
+    }
+
+    usleep(500000); 
+}
     close(sckfd);
     pthread_exit(NULL);
 }
