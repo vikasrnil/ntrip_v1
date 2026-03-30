@@ -21,11 +21,13 @@ pthread_mutex_t gga_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t gga_cond = PTHREAD_COND_INITIALIZER;
 
 /* ================= NTRIP CONFIG ================= */
-char *hst = "";
-char *get_request = "\r\n\r\n";
+char *hst = "qrtksa1.quectel.com";   
+
+char *get_request ="GET /AUTO_ITRF2020 HTTP/1.1\r\nHost: qrtksa1.quectel.com\r\nNtrip-Version: Ntrip/2.0\r\nUser-Agent: PythonNTRIP\r\nAuthorization: Basic ZXNjb3J0c2t1Ym90YV8wMDAwMDAxOm05amRlYjZ6\r\nConnection: keep-alive\r\n\r\n";
+
 
 /* =========================================================
-   NTRIP THREAD (Consumes GGA + Sends RTCM to GNSS)
+   NTRIP THREAD
    ========================================================= */
 void *ntrip_thread(void *arg)
 {
@@ -45,7 +47,7 @@ void *ntrip_thread(void *arg)
             pthread_cond_wait(&gga_cond, &gga_mutex);
         }
 
-        /* Copy GGA locally */
+        /* Copy GGA */
         char gga_local[GGA_BUF_SIZE];
         strcpy(gga_local, latest_gga);
         gga_available = 0;
@@ -54,14 +56,14 @@ void *ntrip_thread(void *arg)
 
         /* ===== SEND GGA TO NTRIP SERVER ===== */
         write(sockfd, gga_local, strlen(gga_local));
-        // printf("Sent GGA: %s\n", gga_local);
+        printf("Sent GGA: %s\n", gga_local);
 
         /* ===== READ RTCM FROM SERVER ===== */
         n = read(sockfd, buffer, sizeof(buffer));
         if (n > 0)
         {
             write(serial_fd, buffer, n);
-            // printf("RTCM bytes: %d\n", n);
+            printf("RTCM bytes: %d\n", n);
         }
         else
         {
@@ -78,7 +80,7 @@ void *ntrip_thread(void *arg)
 }
 
 /* =========================================================
-   SERIAL THREAD (Produces GGA)
+   SERIAL THREAD
    ========================================================= */
 void *serial_thread(void *arg)
 {
