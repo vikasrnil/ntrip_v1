@@ -11,7 +11,6 @@
 extern struct hostent *server;
 
 // ---------------- MUTEX ----------------
-pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 // ---------------- CONFIG ----------------
@@ -181,8 +180,6 @@ void *serial_reader_thread(void *arg)
 int main()
 {
     pthread_t tid, wid;
-
-    pthread_mutex_init(&lock, NULL);
     pthread_mutex_init(&buffer_mutex, NULL);
 
     // NTRIP thread
@@ -202,7 +199,6 @@ int main()
     pthread_join(tid, NULL);
     pthread_join(wid, NULL);
 
-    pthread_mutex_destroy(&lock);
     pthread_mutex_destroy(&buffer_mutex);
 
     return 0;
